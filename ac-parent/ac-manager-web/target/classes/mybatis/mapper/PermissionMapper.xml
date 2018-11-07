@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd" >
+<mapper namespace="com.atguigu.ac.mappers.PermissionMapper">
+	<resultMap id="BaseResultMap"
+		type="com.atguigu.ac.entities.Permission">
+		<id column="id" property="id" jdbcType="INTEGER" />
+		<result column="pid" property="pid" jdbcType="INTEGER" />
+		<result column="name" property="name" jdbcType="VARCHAR" />
+		<result column="icon" property="icon" jdbcType="VARCHAR" />
+		<result column="url" property="url" jdbcType="VARCHAR" />
+	</resultMap>
+	<select id="selectTreeByUserId" resultMap="BaseResultMap">
+		SELECT DISTINCT
+			p.id,
+			p.pid,
+			p.`name`,
+			p.icon,
+			p.url
+		FROM
+			t_user_role ur
+		INNER JOIN t_role_permission rp ON ur.roleid = rp.roleid
+		INNER JOIN t_permission p ON rp.permissionid = p.id
+		WHERE
+			ur.userid = #{userId}
+	</select>
+	<delete id="deleteByPrimaryKey"
+		parameterType="java.lang.Integer">
+		delete from t_permission
+		where id =
+		#{id,jdbcType=INTEGER}
+	</delete>
+	<insert id="insert"
+		parameterType="com.atguigu.ac.entities.Permission">
+		insert into t_permission (id, pid, name,
+		icon, url)
+		values (#{id,jdbcType=INTEGER}, #{pid,jdbcType=INTEGER},
+		#{name,jdbcType=VARCHAR},
+		#{icon,jdbcType=VARCHAR},
+		#{url,jdbcType=VARCHAR})
+	</insert>
+	<update id="updateByPrimaryKey"
+		parameterType="com.atguigu.ac.entities.Permission">
+		update t_permission
+		set
+		name = #{name,jdbcType=VARCHAR},
+		icon = #{icon,jdbcType=VARCHAR},
+		url = #{url,jdbcType=VARCHAR}
+		where id
+		= #{id,jdbcType=INTEGER}
+	</update>
+	<select id="selectByPrimaryKey" resultMap="BaseResultMap"
+		parameterType="java.lang.Integer">
+		select id, pid, name, icon, url
+		from t_permission
+		where id
+		= #{id,jdbcType=INTEGER}
+	</select>
+	<select id="selectAll" resultMap="BaseResultMap">
+		select id, pid, name, icon, url
+		from t_permission
+	</select>
+
+	<select id="selectPermissionIdByRoleId" resultType="int">
+		select
+		permissionid
+		from t_role_permission where roleid = #{roleId}
+	</select>
+
+	<delete id="deleteRelationshipByRoleId">
+		delete from t_role_permission
+		where roleid=#{roleId}
+	</delete>
+	<insert id="insertRelationship">
+		insert into t_role_permission(roleid,permissionid)
+		values
+		<foreach collection="permissionIdList" item="permissionId"
+			separator=",">(#{roleId},#{permissionId})</foreach>
+	</insert>
+</mapper>

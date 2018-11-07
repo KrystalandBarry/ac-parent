@@ -1,0 +1,118 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd
+		http://www.springframework.org/schema/context http://www.springframework.org/schema/context/spring-context-4.0.xsd
+		http://www.springframework.org/schema/aop http://www.springframework.org/schema/aop/spring-aop-4.0.xsd
+		http://www.springframework.org/schema/tx http://www.springframework.org/schema/tx/spring-tx-4.0.xsd">
+
+	<!-- 配置自动扫描的包 -->
+	<context:component-scan
+		base-package="com.atguigu.ac.component.services" />
+
+	<!-- 加载外部属性文件 -->
+	<context:property-placeholder
+		location="classpath:jdbc.properties" />
+
+	<!-- 配置数据源 -->
+	<bean id="druidDataSource"
+		class="com.alibaba.druid.pool.DruidDataSource">
+		<property name="username" value="${atguigu.username}" />
+		<property name="password" value="${atguigu.userpwd}" />
+		<property name="driverClassName"
+			value="${atguigu.driverClass}" />
+		<property name="url" value="${atguigu.url}" />
+	</bean>
+
+	<!-- 整合MyBatis -->
+	<!-- 配置SqlSessionFactoryBean -->
+	<bean id="sqlSessionFactoryBean"
+		class="org.mybatis.spring.SqlSessionFactoryBean">
+		<!-- 装配数据源 -->
+		<property name="dataSource" ref="druidDataSource" />
+
+		<!-- 指定MyBatis配置文件位置 -->
+		<property name="configLocation"
+			value="classpath:mybatis/mybatis-config.xml" />
+
+		<!-- 指定Mapper.xml配置文件位置 -->
+		<property name="mapperLocations"
+			value="classpath:mybatis/mapper/*.xml" />
+
+		<!-- 指定实体类所在包的包名 -->
+		<!-- 作用：如果配置了这个属性，那么在XxxMapper.xml中指定实体类的类型时可以省略包名部分 -->
+		<!-- <property name="typeAliasesPackage" value="com.atguigu.ac.entities"/> -->
+		<property name="plugins">
+			<list>
+				<bean class="com.github.pagehelper.PageHelper">
+					<!-- 为PageHelper插件设置属性 -->
+					<property name="properties">
+						<props>
+							<!-- 设置数据库方言，让PageHelper能够知道当前使用的数据库 -->
+							<!-- 从而能够根据具体的数据库，生成SQL语句中分页相关的部分 -->
+							<prop key="dialect">mysql</prop>
+							<!-- 将前台页面传入的页码修正到1~总页数之间的范围 -->
+							<prop key="reasonable">true</prop>
+						</props>
+					</property>
+				</bean>
+			</list>
+		</property>
+	</bean>
+
+	<!-- 扫描Mapper接口 -->
+	<bean id="mapperScannerConfigurer"
+		class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+		<!-- 指定Mapper接口所在的包 -->
+		<property name="basePackage" value="com.atguigu.ac.mappers" />
+	</bean>
+
+	<!-- 配置声明式事务 -->
+	<!-- 配置事务管理器 -->
+	<bean id="dataSourceTransactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="druidDataSource" />
+	</bean>
+
+	<!-- 在事务通知中配置事务属性 -->
+	<!-- id属性：用来在aop配置中引用事务通知 -->
+	<!-- transaction-manager属性：引用事务管理器的bean，如果bean的id是transactionManager则可以省略 -->
+	<tx:advice id="acTxAdvice"
+		transaction-manager="dataSourceTransactionManager">
+		<!-- 配置具体事务属性 -->
+		<tx:attributes>
+			<!-- 查询方法设置为只读 -->
+			<tx:method name="query*" read-only="true" />
+			<tx:method name="get*" read-only="true" />
+			<tx:method name="find*" read-only="true" />
+
+			<!-- 增删改方法 -->
+			<!-- 事务传播行为REQUIRED：当前操作一定要在事务中运行，但如果当前线程上能够检测到一个已经开启的事务，那么就在这个事务中运行。缺陷：共用一个事务时，一旦有操作失败，所以操作都会被回滚。 -->
+			<!-- 事务传播行为REQUIRES_NEW：当前操作一定要在事务中运行，而且还必须是自己新开启的事务，就算是当前线程上已经开启了事务，也在自己的事务中运行。好处：不会受其他事务回滚的影响。 -->
+			<!-- 回滚的异常：默认回滚异常类型java.lang.RuntimeException -->
+			<!-- 回滚的异常：希望回滚异常类型java.lang.Exception -->
+			<tx:method name="update*" propagation="REQUIRES_NEW"
+				rollback-for="java.lang.Exception" />
+			<tx:method name="remove*" propagation="REQUIRES_NEW"
+				rollback-for="java.lang.Exception" />
+			<tx:method name="save*" propagation="REQUIRES_NEW"
+				rollback-for="java.lang.Exception" />
+			<tx:method name="batch*" propagation="REQUIRES_NEW"
+				rollback-for="java.lang.Exception" />
+		</tx:attributes>
+	</tx:advice>
+
+	<!-- 将事务通知和事务切面的切入点表达式关联起来 -->
+	<aop:config>
+		<!-- 事务切面的切入点表达式 -->
+		<aop:pointcut expression="execution(* *..*Service.*(..))"
+			id="acTxPointCut" />
+		<!-- 关联 -->
+		<aop:advisor advice-ref="acTxAdvice"
+			pointcut-ref="acTxPointCut" />
+	</aop:config>
+
+</beans>
